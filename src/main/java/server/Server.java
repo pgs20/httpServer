@@ -12,15 +12,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Server {
-    final int PORT = 9999;
-    final List<String> validPaths = List.of("/index.html", "/spring.svg", "/spring.png", "/resources.html", "/styles.css", "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html", "/events.js");
-
+    private final int PORT = 9999;
+    private final List<String> validPaths = List.of("/index.html", "/spring.svg", "/spring.png", "/resources.html", "/styles.css", "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html", "/events.js");
+    private ExecutorService executor = Executors.newFixedThreadPool(64);
     public void start() {
-        ExecutorService executor = Executors.newFixedThreadPool(64);
-        executor.execute(() -> {
-            try (final ServerSocket serverSocket = new ServerSocket(PORT)) {
-                while (true) {
-                    System.out.println(this);
+
+        try (final ServerSocket serverSocket = new ServerSocket(PORT)) {
+            while (true) {
+                executor.execute(() -> {
                     try (
                             final Socket socket = serverSocket.accept();
                             final BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -30,14 +29,14 @@ public class Server {
                         final String[] parts = requestLine.split(" ");
 
                         if (parts.length != 3) {
-                            continue;
+                            return;
                         }
 
                         final String path = parts[1];
                         if (!validPaths.contains(path)) {
                             responseNotFound(out);
                             out.flush();
-                            continue;
+                            return;
                         }
 
                         final Path filePath = Paths.get(".", "public", path);
@@ -52,20 +51,21 @@ public class Server {
                             responseOK(out, mimeType, content.length);
                             out.write(content);
                             out.flush();
-                            continue;
+                            return;
                         }
 
                         final var length = Files.size(filePath);
                         responseOK(out, mimeType, length);
                         Files.copy(filePath, out);
                         out.flush();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
                     }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+                });
             }
-        });
-        executor.shutdown();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void responseNotFound(BufferedOutputStream out) throws IOException {
