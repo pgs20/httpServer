@@ -26,13 +26,13 @@ public class Server {
                             final BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream());
                     ) {
                         final String requestLine = in.readLine();
-                        final String[] parts = requestLine.split(" ");
+                        final Request request = parserRequest(requestLine);
 
-                        if (parts.length != 3) {
+                        if (request == null) {
                             return;
                         }
 
-                        final String path = parts[1];
+                        final String path = request.getPath();
                         if (!validPaths.contains(path)) {
                             responseNotFound(out);
                             out.flush();
@@ -66,6 +66,13 @@ public class Server {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public Request parserRequest(String requestLine) {
+        String[] request = requestLine.split(" ");
+        if (request.length != 3) return null;
+
+        return new Request(request[0], request[1], request[2]);
     }
 
     public void responseNotFound(BufferedOutputStream out) throws IOException {
