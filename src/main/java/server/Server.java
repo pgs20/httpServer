@@ -7,7 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -15,6 +18,8 @@ public class Server {
     private final int PORT = 9999;
     private final List<String> validPaths = List.of("/index.html", "/spring.svg", "/spring.png", "/resources.html", "/styles.css", "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html", "/events.js");
     private ExecutorService executor = Executors.newFixedThreadPool(64);
+
+    private ConcurrentHashMap<String, Map<String, Handler>> handlers = new ConcurrentHashMap<>();
     public void start() {
 
         try (final ServerSocket serverSocket = new ServerSocket(PORT)) {
@@ -32,32 +37,14 @@ public class Server {
                             return;
                         }
 
-                        final String path = request.getPath();
-                        if (!validPaths.contains(path)) {
+                        Handler handler = findHandler(request.getMethod(), request.getPath());
+                        if (handler == null) {
                             responseNotFound(out);
                             out.flush();
                             return;
                         }
 
-                        final Path filePath = Paths.get(".", "public", path);
-                        final String mimeType = Files.probeContentType(filePath);
-
-                        if (path.equals("/classic.html")) {
-                            final String template = Files.readString(filePath);
-                            final byte[] content = template.replace(
-                                    "{time}",
-                                    LocalDateTime.now().toString()
-                            ).getBytes();
-                            responseOK(out, mimeType, content.length);
-                            out.write(content);
-                            out.flush();
-                            return;
-                        }
-
-                        final var length = Files.size(filePath);
-                        responseOK(out, mimeType, length);
-                        Files.copy(filePath, out);
-                        out.flush();
+                        handler.handle(request, out);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -92,5 +79,16 @@ public class Server {
                         "Connection: close\r\n" +
                         "\r\n"
         ).getBytes());
+    }
+
+    public void addHandler(String method, String path, Handler handler) {
+        handlers.computeIfAbsent(method, k -> new HashMap<>()).put(path, handler);
+    }
+
+    public Handler findHandler(String method, String path) {
+        Map<String, Handler> methodHandlers = handlers.get(method);
+        if (methodHandlers == null) return null;
+
+        return methodHandlers.get(path);
     }
 }
