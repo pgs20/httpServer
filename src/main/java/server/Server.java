@@ -1,12 +1,13 @@
 package server;
 
+import org.apache.http.client.utils.URLEncodedUtils;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +48,8 @@ public class Server {
                         handler.handle(request, out);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
+                    } catch (URISyntaxException e) {
+                        throw new RuntimeException(e);
                     }
                 });
             }
@@ -55,27 +58,18 @@ public class Server {
         }
     }
 
-    public Request parserRequest(String requestLine) {
+    public Request parserRequest(String requestLine) throws URISyntaxException {
         String[] request = requestLine.split(" ");
         if (request.length != 3) return null;
+        URI uri = new URI(request[1]);
 
-        return new Request(request[0], request[1], request[2]);
+        return new Request(request[0], uri.getPath(), URLEncodedUtils.parse(uri, Charset.forName("UTF-8")),request[2]);
     }
 
     public void responseNotFound(BufferedOutputStream out) throws IOException {
         out.write((
                 "HTTP/1.1 404 Not Found\r\n" +
                         "Content-Length: 0\r\n" +
-                        "Connection: close\r\n" +
-                        "\r\n"
-        ).getBytes());
-    }
-
-    public void responseOK(BufferedOutputStream out, String mimeType, long length) throws IOException {
-        out.write((
-                "HTTP/1.1 200 OK\r\n" +
-                        "Content-Type: " + mimeType + "\r\n" +
-                        "Content-Length: " + length + "\r\n" +
                         "Connection: close\r\n" +
                         "\r\n"
         ).getBytes());

@@ -5,6 +5,7 @@ import server.Server;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Main {
@@ -15,12 +16,30 @@ public class Main {
             @Override
             public void handle(Request request, BufferedOutputStream responseStream) {
                 try {
+                    Path path = Paths.get(".", "public", request.getPath());
+                    responseStream.write(("HTTP/1.1 200 OK\r\n" +
+                            "Content-Type: " +  Files.probeContentType(path) + "\r\n" +
+                            "Content-Length: " + Files.size(path) + "\r\n" +
+                            "Connection: close\r\n" +
+                            "\r\n").getBytes());
+                    Files.copy(path, responseStream);
+                    responseStream.flush();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+
+        server.addHandler("GET", "/forms.html", new Handler() {
+            @Override
+            public void handle(Request request, BufferedOutputStream responseStream) {
+                try {
                     responseStream.write(("HTTP/1.1 200 OK\r\n" +
                             "Content-Type: " +  Files.probeContentType(Paths.get(".", "public", request.getPath())) + "\r\n" +
                             "Content-Length: " + Files.size(Paths.get(".", "public", request.getPath())) + "\r\n" +
                             "Connection: close\r\n" +
-                            "\r\n").getBytes());
-                    Files.copy(Paths.get(".", "public", request.getPath()), responseStream);
+                            "\r\n" +
+                            Files.readString(Paths.get(".", "public", request.getPath())) + "\r\n").getBytes());
                     responseStream.flush();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
