@@ -34,12 +34,14 @@ public class Main {
             @Override
             public void handle(Request request, BufferedOutputStream responseStream) {
                 try {
+                    Path path = Paths.get(".", "public", request.getPath());
                     responseStream.write(("HTTP/1.1 200 OK\r\n" +
-                            "Content-Type: " +  Files.probeContentType(Paths.get(".", "public", request.getPath())) + "\r\n" +
-                            "Content-Length: " + Files.size(Paths.get(".", "public", request.getPath())) + "\r\n" +
+                            "Content-Type: " +  Files.probeContentType(path) + "\r\n" +
+                            "Content-Length: " + Files.size(path) + "\r\n" +
                             "Connection: close\r\n" +
-                            "\r\n" +
-                            Files.readString(Paths.get(".", "public", request.getPath())) + "\r\n").getBytes());
+                            "\r\n"
+                    ).getBytes());
+                    responseStream.write(Files.readString(path).getBytes());
                     responseStream.flush();
                 } catch (IOException e) {
                     throw new RuntimeException(e);

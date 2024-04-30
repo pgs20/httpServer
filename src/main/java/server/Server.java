@@ -9,7 +9,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -17,7 +16,6 @@ import java.util.concurrent.Executors;
 
 public class Server {
     private final int PORT = 9999;
-    private final List<String> validPaths = List.of("/index.html", "/spring.svg", "/spring.png", "/resources.html", "/styles.css", "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html", "/events.js");
     private ExecutorService executor = Executors.newFixedThreadPool(64);
 
     private ConcurrentHashMap<String, Map<String, Handler>> handlers = new ConcurrentHashMap<>();
@@ -62,6 +60,7 @@ public class Server {
         String[] request = requestLine.split(" ");
         if (request.length != 3) return null;
         URI uri = new URI(request[1]);
+
 
         return new Request(request[0], uri.getPath(), URLEncodedUtils.parse(uri, Charset.forName("UTF-8")),request[2]);
     }
